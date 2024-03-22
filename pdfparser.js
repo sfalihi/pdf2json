@@ -87,7 +87,7 @@ export default class PDFParser extends EventEmitter {
      * @private
      * @param {Buffer} buffer - The PDF buffer
      */
-    #startParsingPDF(buffer) {
+    #startParsingPDF(buffer, metadata, infoCallback = () => {}) {
         this.#data = {};
         this.#PDFJS.on("pdfjs_parseDataReady", data => this.#onPDFJSParseDataReady(data));
         this.#PDFJS.on("pdfjs_parseDataError", err => this.#onPDFJSParserDataError(err));
@@ -97,16 +97,17 @@ export default class PDFParser extends EventEmitter {
         this.#PDFJS.on("data", data => this.emit("data", data));
         this.#PDFJS.on("error", err => this.#onPDFJSParserDataError(err));    
         
-        this.#PDFJS.parsePDFData(buffer || PDFParser.#binBuffer[this.binBufferKey], this.#password);
+        this.#PDFJS.parsePDFData(buffer || PDFParser.#binBuffer[this.binBufferKey], this.#password, metadata, infoCallback);
     }
 
 	/**
      * @private
      * @returns {boolean}
      */
-    #processBinaryCache() {
+    #processBinaryCache(metadata, infoCallback) {
 		if (this.binBufferKey in PDFParser.#binBuffer) {
-			this.#startParsingPDF();
+            console.log("using cache...");
+			this.#startParsingPDF(null,metadata,infoCallback);
 			return true;
 		}
 		
@@ -148,7 +149,8 @@ export default class PDFParser extends EventEmitter {
      * @param {string} pdfFilePath - Path of the PDF file
      * @param {number} verbosity - Verbosity level
      */
-	async loadPDF(pdfFilePath, verbosity) {
+	async loadPDF(pdfFilePath, verbosity, metadata, infoCallback = () => {}) {
+
 		nodeUtil.verbosity(verbosity || 0);
 		nodeUtil.p2jinfo("about to load PDF file " + pdfFilePath);
 
@@ -160,12 +162,14 @@ export default class PDFParser extends EventEmitter {
                 this.#PDFJS.tryLoadFieldInfoXML(pdfFilePath);
             }
 
-            if (this.#processBinaryCache())
+            if (this.#processBinaryCache(metadata, infoCallback))
                 return;
-        
+       
             PDFParser.#binBuffer[this.binBufferKey] = await readFile(pdfFilePath);
             nodeUtil.p2jinfo(`Load OK: ${pdfFilePath}`);
-            this.#startParsingPDF();
+
+           
+            this.#startParsingPDF(null, metadata, infoCallback);
         }
         catch(err) {
             nodeUtil.p2jerror(`Load Failed: ${pdfFilePath} - ${err}`);
