@@ -280,8 +280,10 @@ var Parser = (function ParserClosure() {
         var paramsArray = params;
         for (var i = 0, ii = filterArray.length; i < ii; ++i) {
           filter = filterArray[i];
-          if (!isName(filter))
-            error('Bad filter name: ' + filter);
+          if (!isName(filter)){
+            // error('Bad filter name: ' + filter);
+            return stream; // don't continue filtering that stream, just return it now!
+          }
 
           params = null;
           if (isArray(paramsArray) && (i in paramsArray))
